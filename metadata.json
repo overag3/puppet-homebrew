@@ -1,6 +1,6 @@
 {
   "name": "puppet-homebrew",
-  "version": "1.10.0",
+  "version": "3.0.0",
   "author": "usm",
   "summary": "Homebrew (+brewcask! +taps! +pins! +services! +bundle!) package installer and provider",
   "license": "Apache-2.0",
@@ -21,11 +21,11 @@
   "requirements": [
     {
       "name": "ruby",
-      "version_requirement": ">= 2.2.0 < 3.0.0"
+      "version_requirement": ">= 3.2.0 < 4.0.0"
     },
     {
       "name": "puppet",
-      "version_requirement": ">= 4.0.0 < 7.0.0"
+      "version_requirement": ">= 8.0.0"
     }
   ],
   "pdk-version": "1.7.1",

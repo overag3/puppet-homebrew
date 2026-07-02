@@ -1,10 +1,8 @@
 class homebrew::compiler {
 
-  if str2bool($::has_compiler) {
-  } elsif versioncmp($::macosx_productversion_major, '10.7') < 0 {
-    warning('Please install the Command Line Tools bundled with XCode manually!')
-  } elsif ($homebrew::command_line_tools_package and $homebrew::command_line_tools_source) {
-
+  if $facts['has_compiler'] {
+    notice('Compiler already present; skipping command line tools installation.')
+  } elsif $homebrew::command_line_tools_package and $homebrew::command_line_tools_source {
     notice('Installing Command Line Tools from DMG.')
 
     package { $homebrew::command_line_tools_package:
@@ -36,5 +34,4 @@ class homebrew::compiler {
       require => Exec['install-clt'],
     }
   }
-
 }

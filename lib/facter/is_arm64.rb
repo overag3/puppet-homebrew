@@ -7,10 +7,9 @@
 #   No value set if not on Darwin
 
 Facter.add(:is_arm64) do
-    confine kernel: 'Darwin'
-  
-    setcode do
-      system('arch -arm64 true >/dev/null 2>&1')
-    end
+  confine kernel: 'Darwin'
+
+  setcode do
+    system('arch -arm64 true >/dev/null 2>&1')
   end
-  
+end
