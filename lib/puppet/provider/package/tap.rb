@@ -94,7 +94,7 @@ Puppet::Type.type(:package).provide(:tap, :parent => Puppet::Provider::Package) 
         return { :name => line, :ensure => 'present', :provider => 'tap' }
       end
     rescue Puppet::ExecutionFailure => detail
-      Puppet.Err "Could not query tap: #{detail}"
+      Puppet.err "Could not query tap: #{detail}"
     end
 
     nil
@@ -114,7 +114,7 @@ Puppet::Type.type(:package).provide(:tap, :parent => Puppet::Provider::Package) 
       end
       taps
     rescue Puppet::ExecutionFailure => detail
-      Puppet.Err "Could not list taps: #{detail}"
+      Puppet.err "Could not list taps: #{detail}"
       nil
     end
   end

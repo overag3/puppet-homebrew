@@ -42,7 +42,69 @@ The providers works as follows:
 Tapping Repositories
 ~~~~~~~~~~~~~~~~~~~~
 
-To tap into new Github repositories, simply use the tap provider:
+The recommended way to manage taps is the dedicated ``homebrew_tap`` type:
+
+.. code-block:: puppet
+
+    homebrew_tap { 'neovim/neovim':
+      ensure => present,
+    }
+
+You can untap a repository by setting ensure to ``absent``.
+
+To tap a private or non-GitHub repository, provide a custom git URL. The URL is
+drift-corrected: if the tap's actual git remote no longer matches the declared
+value, the remote is rewritten *in place* with ``brew tap --custom-remote``
+(no destructive untap/re-tap, so the local clone is preserved).
+
+.. code-block:: puppet
+
+    homebrew_tap { 'mycompany/internal':
+      ensure => present,
+      url    => 'https://git.example.com/mycompany/homebrew-internal.git',
+    }
+
+Additional options are available for third-party taps:
+
+.. code-block:: puppet
+
+    homebrew_tap { 'mycompany/tools':
+      ensure            => present,
+      force_auto_update => true,  # git-pull the tap on every `brew update`
+      trust             => true,  # `brew trust --tap` (see below)
+      force             => true,  # `brew tap --force` (force-clone via the API)
+    }
+
+* ``force_auto_update`` — when ``true``, sets the tap's
+  ``homebrew.forceautoupdate`` git config so Homebrew refreshes it on every
+  ``brew update``; when ``false`` the setting is removed. (Homebrew dropped the
+  ``brew tap --force-auto-update`` flag in 4.2.13, so this is managed via git
+  config directly.)
+* ``trust`` — runs ``brew trust --tap`` / ``brew untrust --tap``. Trusting a
+  non-official tap is required to load its formulae, casks and commands once
+  ``HOMEBREW_REQUIRE_TAP_TRUST`` is set (the default from Homebrew 6.0.0).
+  Official ``homebrew/*`` taps are always trusted.
+* ``force`` — passes ``--force`` to ``brew tap`` (e.g. to force-clone
+  ``homebrew/cask`` even though it is otherwise served from the JSON API) and to
+  ``brew untap`` (to allow ``ensure => absent`` even while formulae or casks from
+  the tap are still installed, which ``brew untap`` refuses by default).
+
+If unspecified, ``force_auto_update`` and ``trust`` are left unmanaged.
+
+Declaring an official tap that has since been merged or built into Homebrew
+(e.g. ``homebrew/cask-fonts``, ``homebrew/cask-versions``, ``homebrew/bundle``,
+``homebrew/services``) still works but emits a deprecation warning.
+
+Because ``homebrew_tap`` is a native type, you can inspect the currently tapped
+repositories with ``puppet resource homebrew_tap``, and enforce that *only* the
+declared taps exist (untapping any others) with a resource purge:
+
+.. code-block:: puppet
+
+    resources { 'homebrew_tap': purge => true }
+
+The legacy ``tap`` package provider is still supported for backwards
+compatibility but is deprecated in favour of ``homebrew_tap``:
 
 .. code-block:: puppet
 
@@ -62,9 +124,8 @@ few different ways: either by doing so on a per-package basis:
 
 .. code-block:: puppet
 
-    package { 'neovim/neovim':
-      ensure   => present,
-      provider => tap,
+    homebrew_tap { 'neovim/neovim':
+      ensure => present,
     } ->
     package { 'neovim':
       ensure   => present,
@@ -77,9 +138,27 @@ or by setting all taps to occur before all other usages of this package with
 .. code-block:: puppet
 
     # pick whichever provider(s) are relevant
-    Package <| provider == tap |> -> Package <| provider == homebrew |>
-    Package <| provider == tap |> -> Package <| provider == brew |>
-    Package <| provider == tap |> -> Package <| provider == brewcask |>
+    Homebrew_tap <| |> -> Package <| provider == homebrew |>
+    Homebrew_tap <| |> -> Package <| provider == brew |>
+    Homebrew_tap <| |> -> Package <| provider == brewcask |>
+
+
+Extra Environment Variables
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Besides ``github_token`` (which sets ``HOMEBREW_GITHUB_API_TOKEN``), arbitrary
+``HOMEBREW_*`` variables can be written to ``/etc/environment`` via the
+``homebrew_environment`` hash:
+
+.. code-block:: puppet
+
+    class { 'homebrew':
+      user                 => 'kevin',
+      homebrew_environment => {
+        'HOMEBREW_NO_AUTO_UPDATE' => '1',
+        'HOMEBREW_NO_ANALYTICS'   => '1',
+      },
+    }
 
 Installing Brew
 ~~~~~~~~~~~~~~~
