@@ -22,7 +22,7 @@ class homebrew::compiler {
 
     exec { 'install-clt':
       command   => '/bin/bash -c "PROD=$(/usr/sbin/softwareupdate -l | /usr/bin/grep \"\*.*Command Line\" | /usr/bin/head -n 1 | /usr/bin/awk -F\"\\*\" \x27{print $2}\x27 | /usr/bin/sed -e \x27s/^ *//\x27 | /usr/bin/sed -e \x27s/Label: //\x27 | /usr/bin/tr -d \x27\\n\x27) && /usr/sbin/softwareupdate -i \"$PROD\""', # lint:ignore:140chars
-      creates   => '/Library/Developer/CommandLineTools',
+      unless    => '/usr/bin/test -f /Library/Developer/CommandLineTools/usr/bin/cc',
       timeout   => 0,
       logoutput => on_failure,
       require   => Exec['clt-placeholder'],
