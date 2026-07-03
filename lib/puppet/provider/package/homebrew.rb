@@ -144,19 +144,21 @@ Puppet::Type.type(:package).provide(:homebrew, :parent => Puppet::Provider::Pack
   def self.package_list(options={})
     Puppet.debug "Listing installed packages"
     begin
-      result = run_brew('list', '--versions', '--cask')
-      result += run_brew('list', '--versions', '--formulae')
-
       if resource_name = options[:justme]
         escaped = Regexp.escape(resource_name)
-        if result =~ /^#{escaped} /
-          Puppet.debug "Found package #{resource_name}"
-          result = result.lines.grep(/^#{escaped} /).first
-          Puppet.debug "Stored #{result} in package_list"
-        else
+        # Targeted single-package lookup: one brew call instead of two full lists.
+        # brew list --versions <name> handles both formulae and casks.
+        result = run_brew('list', '--versions', resource_name)
+        if result.empty?
           Puppet.debug "Package #{resource_name} not installed"
-          result = ''
+        else
+          Puppet.debug "Found package #{resource_name}"
+          result = result.lines.grep(/^#{escaped} /).first.to_s
+          Puppet.debug "Stored #{result} in package_list"
         end
+      else
+        result = run_brew('list', '--versions', '--cask')
+        result += run_brew('list', '--versions', '--formulae')
       end
 
       list = result.lines.map { |line| name_version_split(line) }

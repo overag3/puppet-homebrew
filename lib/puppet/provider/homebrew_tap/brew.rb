@@ -73,14 +73,32 @@ Puppet::Type.type(:homebrew_tap).provide(:brew) do
   end
 
   def self.instances
-    installed_taps.map do |tap|
-      new(
-        :name              => tap['name'].to_s.downcase,
-        :ensure            => :present,
-        :url               => remote_url_for(tap['path']),
-        :force_auto_update => force_auto_update_for(tap['path']),
-        :trust             => trust_state(tap),
-      )
+    tap_info = installed_taps.each_with_object({}) { |t, h| h[t['name'].to_s.downcase] = t }
+
+    # `brew tap` enumerates tap directories on disk, including those with a
+    # corrupted git repo that `brew tap-info --json` silently omits.
+    all_names = begin
+      run_brew('tap', combine: false).to_s.lines.map { |l| l.chomp.strip.downcase }.reject(&:empty?)
+    rescue StandardError => e
+      Puppet.debug("Could not enumerate taps via 'brew tap': #{e}")
+      tap_info.keys
+    end
+
+    all_names.map do |name|
+      if (tap = tap_info[name])
+        new(
+          :name              => name,
+          :ensure            => :present,
+          :path              => tap['path'],
+          :url               => remote_url_for(tap['path']),
+          :force_auto_update => force_auto_update_for(tap['path']),
+          :trust             => trust_state(tap),
+        )
+      else
+        Puppet.warning("homebrew_tap: '#{name}' is present on disk but missing from " \
+                       "'brew tap-info --json' (possibly corrupted); only ensure is managed.")
+        new(:name => name, :ensure => :present)
+      end
     end
   end
 
@@ -136,19 +154,32 @@ Puppet::Type.type(:homebrew_tap).provide(:brew) do
   def flush
     if @property_flush[:ensure] == :absent
       untap
+      @property_hash = { :ensure => :absent }
     elsif @property_flush[:ensure] == :present
-      # Newly created tap: tap, then apply any managed properties.
       tap
-      apply_force_auto_update(resource[:force_auto_update]) unless resource[:force_auto_update].nil?
-      apply_trust(resource[:trust]) unless resource[:trust].nil?
+      # Resolve path from installed_taps once (avoids a separate tap_path call
+      # per property), then apply any declared properties.
+      fresh = self.class.installed_taps.find { |t| t['name'].to_s.downcase == resource[:name] }
+      if fresh
+        @property_hash = {
+          :ensure            => :present,
+          :path              => fresh['path'],
+          :url               => self.class.remote_url_for(fresh['path']),
+          :force_auto_update => self.class.force_auto_update_for(fresh['path']),
+          :trust             => self.class.trust_state(fresh),
+        }
+      else
+        @property_hash = { :ensure => :present }
+      end
+      wanted = { :force_auto_update => resource[:force_auto_update],
+                 :trust             => resource[:trust] }.reject { |_, v| v.nil? }
+      apply_properties(wanted)
+      wanted.each { |k, v| @property_hash[k] = v }
     else
-      # Existing tap: apply only the properties that drifted.
-      set_remote(@property_flush[:url]) if @property_flush.key?(:url)
-      apply_force_auto_update(@property_flush[:force_auto_update]) if @property_flush.key?(:force_auto_update)
-      apply_trust(@property_flush[:trust]) if @property_flush.key?(:trust)
+      # Existing tap: apply only drifted properties, update @property_hash in place.
+      apply_properties(@property_flush)
+      @property_flush.each { |k, v| @property_hash[k] = v }
     end
-
-    @property_hash = query || { :ensure => :absent }
     @property_flush = {}
   end
 
@@ -190,8 +221,14 @@ Puppet::Type.type(:homebrew_tap).provide(:brew) do
     raise Puppet::Error, "Could not set custom remote for #{resource[:name]}: #{e}"
   end
 
+  def apply_properties(updates)
+    set_remote(updates[:url]) if updates.key?(:url)
+    apply_force_auto_update(updates[:force_auto_update]) if updates.key?(:force_auto_update)
+    apply_trust(updates[:trust]) if updates.key?(:trust)
+  end
+
   def apply_force_auto_update(value)
-    dir = tap_path
+    dir = (@property_hash[:path] || tap_path).to_s
     return if dir.empty?
 
     if value == :true
