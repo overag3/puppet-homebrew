@@ -148,9 +148,10 @@ Puppet::Type.type(:package).provide(:homebrew, :parent => Puppet::Provider::Pack
       result += run_brew('list', '--versions', '--formulae')
 
       if resource_name = options[:justme]
-        if result =~ /^#{resource_name} /
+        escaped = Regexp.escape(resource_name)
+        if result =~ /^#{escaped} /
           Puppet.debug "Found package #{resource_name}"
-          result = result.lines.grep(/^#{resource_name}/).first
+          result = result.lines.grep(/^#{escaped} /).first
           Puppet.debug "Stored #{result} in package_list"
         else
           Puppet.debug "Package #{resource_name} not installed"
