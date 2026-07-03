@@ -26,7 +26,7 @@ class homebrew (
   # $homebrew_environment hash (e.g. { 'HOMEBREW_NO_AUTO_UPDATE' => '1' }).
   $_environment = $homebrew::github_token ? {
     undef   => $homebrew::homebrew_environment,
-    default => { 'HOMEBREW_GITHUB_API_TOKEN' => $homebrew::github_token } + $homebrew::homebrew_environment,
+    default => $homebrew::homebrew_environment + { 'HOMEBREW_GITHUB_API_TOKEN' => $homebrew::github_token },
   }
 
   unless empty($_environment) {

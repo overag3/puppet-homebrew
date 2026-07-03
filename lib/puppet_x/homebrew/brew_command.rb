@@ -15,18 +15,19 @@ module PuppetX
       APPLE_SILICON_BREW = '/opt/homebrew/bin/brew'.freeze
 
       # Locate the brew binary. The default prefix is architecture-dependent
-      # (/opt/homebrew on Apple Silicon, /usr/local on Intel), so we pick the
-      # path from the CPU model fact rather than from whichever path happens to
-      # exist first (both prefixes can coexist under Rosetta 2). We still fall
-      # back to the other prefix to support non-default install locations.
+      # (/opt/homebrew on Apple Silicon, /usr/local on Intel), so we use the
+      # is_arm64 custom fact (which runs `arch -arm64 true`) rather than a
+      # filesystem probe — both prefixes can coexist under Rosetta 2 and a
+      # probe would silently pick the wrong one. We still fall back to the
+      # other prefix to support non-default install locations.
       def detect_brew_bin
-        models = begin
-          Facter.value('processors.models')
+        is_arm64 = begin
+          Facter.value('is_arm64')
         rescue StandardError
           nil
         end
 
-        candidates = if Array(models).any? { |model| model.to_s =~ /\AApple/ }
+        candidates = if is_arm64
                        [APPLE_SILICON_BREW, INTEL_BREW]
                      else
                        [INTEL_BREW, APPLE_SILICON_BREW]

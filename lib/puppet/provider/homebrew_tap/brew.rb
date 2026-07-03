@@ -192,7 +192,7 @@ Puppet::Type.type(:homebrew_tap).provide(:brew) do
 
   def apply_force_auto_update(value)
     dir = tap_path
-    return if dir.nil? || dir.empty?
+    return if dir.empty?
 
     if value == :true
       run_owned(GIT_BIN, '-C', dir, 'config', 'homebrew.forceautoupdate', 'true')
@@ -220,8 +220,6 @@ Puppet::Type.type(:homebrew_tap).provide(:brew) do
 
   def tap_path
     run_brew('--repository', resource[:name], combine: false).to_s.strip
-  rescue StandardError
-    nil
   end
 
   def query
