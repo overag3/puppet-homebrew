@@ -5,6 +5,7 @@ class homebrew (
   $github_token               = undef,
   $group                      = 'admin',
   $multiuser                  = false,
+  Hash[String, String] $homebrew_environment = {},
 ) {
   if $facts['os']['name'] != 'Darwin' {
     fail('This Module works on Mac OSX only!')
@@ -20,12 +21,24 @@ class homebrew (
   contain 'homebrew::compiler'
   contain 'homebrew::install'
 
-  if $homebrew::github_token {
-    file { '/etc/environment': ensure => file }
-    -> file_line { 'homebrew-github-api-token':
-      path  => '/etc/environment',
-      line  => "HOMEBREW_GITHUB_API_TOKEN=${homebrew::github_token}",
-      match => '^HOMEBREW_GITHUB_API_TOKEN',
+  # HOMEBREW_GITHUB_API_TOKEN keeps its dedicated parameter for backwards
+  # compatibility; any additional HOMEBREW_* variable can be set through the
+  # $homebrew_environment hash (e.g. { 'HOMEBREW_NO_AUTO_UPDATE' => '1' }).
+  $_environment = $homebrew::github_token ? {
+    undef   => $homebrew::homebrew_environment,
+    default => $homebrew::homebrew_environment + { 'HOMEBREW_GITHUB_API_TOKEN' => $homebrew::github_token },
+  }
+
+  unless empty($_environment) {
+    ensure_resource('file', '/etc/environment', { 'ensure' => 'file' })
+
+    $_environment.each |$var, $value| {
+      file_line { "homebrew-environment-${var}":
+        path    => '/etc/environment',
+        line    => "${var}=${value}",
+        match   => "^${var}=",
+        require => File['/etc/environment'],
+      }
     }
   }
 }
