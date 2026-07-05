@@ -51,8 +51,6 @@ To tap into new Github repositories, simply use the tap provider:
       provider => tap,
     }
 
-You can untap a repository by setting ensure to ``absent``.
-
 Ordering Taps
 ^^^^^^^^^^^^^
 
@@ -77,9 +75,76 @@ or by setting all taps to occur before all other usages of this package with
 .. code-block:: puppet
 
     # pick whichever provider(s) are relevant
-    Package <| provider == tap |> -> Package <| provider == homebrew |>
-    Package <| provider == tap |> -> Package <| provider == brew |>
-    Package <| provider == tap |> -> Package <| provider == brewcask |>
+    Homebrew_tap <| |> -> Package <| provider == homebrew |>
+    Homebrew_tap <| |> -> Package <| provider == brew |>
+    Homebrew_tap <| |> -> Package <| provider == brewcask |>
+
+Pinning Formulae
+~~~~~~~~~~~~~~~~~
+
+Pin an installed formula so ``brew upgrade`` leaves it untouched, using the
+native ``homebrew_pin`` type. The formula must already be installed:
+
+.. code-block:: puppet
+
+    package { 'postgresql@14':
+      ensure   => present,
+      provider => brew,
+    }
+    -> homebrew_pin { 'postgresql@14':
+      ensure => present,
+    }
+
+Set ``ensure => absent`` to unpin.
+
+Managing Services
+~~~~~~~~~~~~~~~~~
+
+Manage ``brew services`` background daemons with the native ``homebrew_service``
+type:
+
+.. code-block:: puppet
+
+    homebrew_service { 'postgresql@14':
+      ensure  => running,   # or 'stopped'
+      require => Package['postgresql@14'],
+    }
+
+Applying a Brewfile
+~~~~~~~~~~~~~~~~~~~
+
+Apply a ``Brewfile`` declaratively with ``homebrew_bundle``. Idempotence is
+delegated to ``brew bundle check``:
+
+.. code-block:: puppet
+
+    homebrew_bundle { '/Users/kevin/Brewfile':
+      ensure => present,
+    }
+
+    # named form with an explicit path and pruning of unlisted packages
+    homebrew_bundle { 'company-baseline':
+      ensure  => present,
+      path    => '/etc/homebrew/Brewfile',
+      cleanup => true,
+    }
+
+Extra Environment Variables
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Besides ``github_token`` (which sets ``HOMEBREW_GITHUB_API_TOKEN``), arbitrary
+``HOMEBREW_*`` variables can be written to ``/etc/environment`` via the
+``homebrew_environment`` hash:
+
+.. code-block:: puppet
+
+    class { 'homebrew':
+      user                 => 'kevin',
+      homebrew_environment => {
+        'HOMEBREW_NO_AUTO_UPDATE' => '1',
+        'HOMEBREW_NO_ANALYTICS'   => '1',
+      },
+    }
 
 Installing Brew
 ~~~~~~~~~~~~~~~
