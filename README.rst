@@ -113,8 +113,6 @@ compatibility but is deprecated in favour of ``homebrew_tap``:
       provider => tap,
     }
 
-You can untap a repository by setting ensure to ``absent``.
-
 Ordering Taps
 ^^^^^^^^^^^^^
 
@@ -142,6 +140,55 @@ or by setting all taps to occur before all other usages of this package with
     Homebrew_tap <| |> -> Package <| provider == brew |>
     Homebrew_tap <| |> -> Package <| provider == brewcask |>
 
+Pinning Formulae
+~~~~~~~~~~~~~~~~~
+
+Pin an installed formula so ``brew upgrade`` leaves it untouched, using the
+native ``homebrew_pin`` type. The formula must already be installed:
+
+.. code-block:: puppet
+
+    package { 'postgresql@14':
+      ensure   => present,
+      provider => brew,
+    }
+    -> homebrew_pin { 'postgresql@14':
+      ensure => present,
+    }
+
+Set ``ensure => absent`` to unpin.
+
+Managing Services
+~~~~~~~~~~~~~~~~~
+
+Manage ``brew services`` background daemons with the native ``homebrew_service``
+type:
+
+.. code-block:: puppet
+
+    homebrew_service { 'postgresql@14':
+      ensure  => running,   # or 'stopped'
+      require => Package['postgresql@14'],
+    }
+
+Applying a Brewfile
+~~~~~~~~~~~~~~~~~~~
+
+Apply a ``Brewfile`` declaratively with ``homebrew_bundle``. Idempotence is
+delegated to ``brew bundle check``:
+
+.. code-block:: puppet
+
+    homebrew_bundle { '/Users/kevin/Brewfile':
+      ensure => present,
+    }
+
+    # named form with an explicit path and pruning of unlisted packages
+    homebrew_bundle { 'company-baseline':
+      ensure  => present,
+      path    => '/etc/homebrew/Brewfile',
+      cleanup => true,
+    }
 
 Extra Environment Variables
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
