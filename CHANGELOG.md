@@ -1,5 +1,18 @@
 # CHANGELOG
 
+## 3.1.0 (2026-07-07)
+- feature: optional idempotent `brew update` to refresh taps, via the new opt-in `homebrew::update` class and the `manage_update` / `update_frequency` parameters on the `homebrew` class (#4)
+- internal: the update runs at most once per interval (guarded by a timestamp marker) so it produces no per-run `changed` churn, is bounded by a finite `timeout`, and swallows transient failures for retry on the next run
+
+## 3.0.0 (2026-07-06)
+- feature: native `homebrew_tap` type/provider for managing taps, including custom (non-GitHub/private) git remotes with in-place drift correction and tap priority (#3)
+- feature: native `homebrew_pin` type/provider to pin/unpin installed formulae against `brew upgrade`
+- feature: native `homebrew_service` type/provider to manage `brew services` daemons (running/stopped)
+- feature: native `homebrew_bundle` type/provider to apply a `Brewfile` declaratively (idempotence via `brew bundle check`)
+- feature: `is_arm64` fact and Apple Silicon support (`/opt/homebrew` prefix) across install and all providers
+- internal: shared `PuppetX::Homebrew::BrewCommand` mixin — brew commands drop privileges to the brew owner and set `HOMEBREW_NO_AUTO_UPDATE=1` on reads; brew/brewcask/homebrew/tap package providers refactored on top of it
+- compatibility: now requires Puppet >= 8, Ruby >= 3.2, and puppetlabs/stdlib >= 9 (breaking)
+
 ## 1.9.1 (2021-09-23)
 - internal: fixup overly-narrow stdlib version pin
 - feature: upgrade casks
