@@ -140,6 +140,41 @@ or by setting all taps to occur before all other usages of this package with
     Homebrew_tap <| |> -> Package <| provider == brew |>
     Homebrew_tap <| |> -> Package <| provider == brewcask |>
 
+Updating Taps
+~~~~~~~~~~~~~
+
+Homebrew only auto-updates taps just before a ``brew install``/``upgrade``/``tap``
+runs, and this module deliberately sets ``HOMEBREW_NO_AUTO_UPDATE=1`` on all of
+its provider reads. On a converged machine where nothing is installed during a
+run, the taps would therefore never be refreshed.
+
+Enable ``manage_update`` to run ``brew update`` (which fetches every git tap,
+official *and* third-party) in a dedicated, opt-in class. The run is guarded by a
+timestamp marker so it fires **at most once per interval** — between intervals
+the resource stays ``unchanged``, so there is no per-run ``changed`` churn:
+
+.. code-block:: puppet
+
+    class { 'homebrew':
+      user             => 'homebrew',
+      manage_update    => true,
+      update_frequency => 86400,   # seconds; default is 24h
+    }
+
+The marker (``<brew_prefix>/var/homebrew/.puppet-last-brew-update``) is only
+refreshed on a successful ``brew update``, so a transient (e.g. network) failure
+is retried on the next run rather than silently skipped for the whole interval.
+
+To guarantee taps are refreshed before your packages are (re)installed, order the
+class ahead of the ``brew`` packages in your own profile:
+
+.. code-block:: puppet
+
+    Class['homebrew::update'] -> Package <| provider == brew |>
+
+``manage_update`` defaults to ``false``; when left disabled the ``homebrew::update``
+class is not declared and behaviour is unchanged.
+
 Pinning Formulae
 ~~~~~~~~~~~~~~~~~
 

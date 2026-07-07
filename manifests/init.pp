@@ -5,6 +5,8 @@ class homebrew (
   $github_token               = undef,
   $group                      = 'admin',
   $multiuser                  = false,
+  Boolean $manage_update      = false,
+  Integer[60] $update_frequency   = 86400,
   Hash[String, String] $homebrew_environment = {},
 ) {
   if $facts['os']['name'] != 'Darwin' {
@@ -20,6 +22,12 @@ class homebrew (
 
   contain 'homebrew::compiler'
   contain 'homebrew::install'
+
+  if $manage_update {
+    class { 'homebrew::update': }
+    contain 'homebrew::update'
+    Class['homebrew::install'] -> Class['homebrew::update']
+  }
 
   # HOMEBREW_GITHUB_API_TOKEN keeps its dedicated parameter for backwards
   # compatibility; any additional HOMEBREW_* variable can be set through the
