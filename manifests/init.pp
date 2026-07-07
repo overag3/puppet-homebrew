@@ -6,7 +6,7 @@ class homebrew (
   $group                      = 'admin',
   $multiuser                  = false,
   Boolean $manage_update      = false,
-  Integer $update_frequency   = 86400,
+  Integer[60] $update_frequency   = 86400,
   Hash[String, String] $homebrew_environment = {},
 ) {
   if $facts['os']['name'] != 'Darwin' {
