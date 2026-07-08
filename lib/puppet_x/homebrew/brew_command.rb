@@ -44,8 +44,12 @@ module PuppetX
       # `--json`): brew writes status chatter ("Fetching...", JSON-API refresh
       # notices, env hints) to stderr, and combining it into stdout corrupts
       # JSON.parse.
-      def run_brew(*args, combine: true)
-        run_owned(command(:brew), *args, combine: combine)
+      # Pass `failonfail: false` for commands whose non-zero exit is a normal
+      # outcome rather than an error (e.g. `brew list --versions <name>`, which
+      # exits 1 when the named package simply isn't installed). Execution then
+      # returns the output instead of raising Puppet::ExecutionFailure.
+      def run_brew(*args, combine: true, failonfail: true)
+        run_owned(command(:brew), *args, combine: combine, failonfail: failonfail)
       end
 
       # Run an arbitrary command as the brew owner, using the same privilege
@@ -56,7 +60,7 @@ module PuppetX
       # `combine` controls whether stderr is merged into the returned stdout
       # (default true, matching Puppet's usual behaviour); set false when the
       # caller parses stdout.
-      def run_owned(*cmd, combine: true)
+      def run_owned(*cmd, combine: true, failonfail: true)
         brew_path = command(:brew)
         owner     = stat('-nf', '%Uu', brew_path).to_i
         group     = stat('-nf', '%Ug', brew_path).to_i
@@ -83,7 +87,7 @@ module PuppetX
           :combine            => combine,
           # Reads must not trigger a network `brew update` mid-run.
           :custom_environment => { 'HOME' => home, 'HOMEBREW_NO_AUTO_UPDATE' => '1' },
-          :failonfail         => true,
+          :failonfail         => failonfail,
         }
 
         if Puppet.features.bundled_environment?

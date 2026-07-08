@@ -146,14 +146,23 @@ Puppet::Type.type(:package).provide(:homebrew, :parent => Puppet::Provider::Pack
     begin
       if resource_name = options[:justme]
         escaped = Regexp.escape(resource_name)
-        # Targeted single-package lookup: one brew call instead of two full lists.
-        # brew list --versions <name> handles both formulae and casks.
-        result = run_brew('list', '--versions', resource_name)
-        if result.empty?
+        # Targeted single-package lookup: cheaper than two full lists.
+        #
+        # brew exits non-zero when the named package isn't installed, so
+        # failonfail must be off — "not installed" is the nominal case for
+        # `ensure => absent` (and for the first install of any package), not an
+        # error. `brew list --versions <name>` only matches formulae, so fall
+        # back to a cask-scoped lookup before concluding the package is absent;
+        # otherwise an installed cask is misreported and never uninstalled.
+        result = run_brew('list', '--versions', resource_name, failonfail: false).to_s
+        result = run_brew('list', '--versions', '--cask', resource_name, failonfail: false).to_s if result.empty?
+        matched = result.lines.grep(/^#{escaped} /).first
+        if matched.nil?
           Puppet.debug "Package #{resource_name} not installed"
+          result = ''
         else
           Puppet.debug "Found package #{resource_name}"
-          result = result.lines.grep(/^#{escaped} /).first.to_s
+          result = matched
           Puppet.debug "Stored #{result} in package_list"
         end
       else
