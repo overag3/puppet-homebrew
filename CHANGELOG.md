@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 3.1.1 (2026-07-08)
+- fix: the `homebrew` package provider now falls back to a cask lookup when a formula is not found, so installed casks are reported accurately
+- internal: `run_brew` accepts a `failonfail` parameter so expected non-zero exit codes are treated as normal outcomes, plus improved debug logging for package installation status
+- fix: the `install-clt` exec now uses `/bin/test` instead of `/usr/bin/test` in its `unless` guard for Command Line Tools installation compatibility
+
 ## 3.1.0 (2026-07-07)
 - feature: optional idempotent `brew update` to refresh taps, via the new opt-in `homebrew::update` class and the `manage_update` / `update_frequency` parameters on the `homebrew` class (#4)
 - internal: the update runs at most once per interval (guarded by a timestamp marker) so it produces no per-run `changed` churn, is bounded by a finite `timeout`, and swallows transient failures for retry on the next run
