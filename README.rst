@@ -229,8 +229,11 @@ Extra Environment Variables
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Besides ``github_token`` (which sets ``HOMEBREW_GITHUB_API_TOKEN``), arbitrary
-``HOMEBREW_*`` variables can be written to ``/etc/environment`` via the
-``homebrew_environment`` hash:
+``HOMEBREW_*`` variables can be set via the ``homebrew_environment`` hash. They are
+written both to ``/etc/environment`` (kept for backwards compatibility, though macOS does
+not read this file automatically) and to ``$HOME/.homebrew/brew.env``, which is the file
+Homebrew (>= 4.1) natively reads on startup and the mechanism actually honored by ``brew``
+invocations:
 
 .. code-block:: puppet
 
@@ -239,6 +242,21 @@ Besides ``github_token`` (which sets ``HOMEBREW_GITHUB_API_TOKEN``), arbitrary
       homebrew_environment => {
         'HOMEBREW_NO_AUTO_UPDATE' => '1',
         'HOMEBREW_NO_ANALYTICS'   => '1',
+      },
+    }
+
+By default, ``$HOME`` is assumed to be ``/Users/<user>``. If the Homebrew user has a
+non-standard home directory, set it explicitly with ``user_home`` (note that ``brew.env``
+is only written when ``homebrew_environment`` or ``github_token`` is also set, so
+``user_home`` has no effect on its own):
+
+.. code-block:: puppet
+
+    class { 'homebrew':
+      user                 => 'kevin',
+      user_home            => '/opt/homes/kevin',
+      homebrew_environment => {
+        'HOMEBREW_NO_AUTO_UPDATE' => '1',
       },
     }
 

@@ -1,13 +1,14 @@
 class homebrew (
   $user,
-  $command_line_tools_package = undef,
-  $command_line_tools_source  = undef,
-  $github_token               = undef,
   $group                      = 'admin',
   $multiuser                  = false,
+  Optional[Stdlib::Absolutepath] $user_home = undef,
+  Hash[String, String] $homebrew_environment = {},
+  $github_token               = undef,
+  $command_line_tools_package = undef,
+  $command_line_tools_source  = undef,
   Boolean $manage_update      = false,
   Integer[60] $update_frequency   = 86400,
-  Hash[String, String] $homebrew_environment = {},
 ) {
   if $facts['os']['name'] != 'Darwin' {
     fail('This Module works on Mac OSX only!')
@@ -40,13 +41,41 @@ class homebrew (
   unless empty($_environment) {
     ensure_resource('file', '/etc/environment', { 'ensure' => 'file' })
 
-    $_environment.each |$var, $value| {
+    $_environment_lines = $_environment.reduce([]) |$memo, $pair| {
+      $var   = $pair[0]
+      $value = $pair[1]
+      $entry = "${var}=${value}"
+
       file_line { "homebrew-environment-${var}":
         path    => '/etc/environment',
-        line    => "${var}=${value}",
+        line    => $entry,
         match   => "^${var}=",
         require => File['/etc/environment'],
       }
+
+      $memo + [$entry]
+    }
+
+    # Homebrew >= 4.1 natively reads HOMEBREW_* vars from $HOME/.homebrew/brew.env,
+    $_user_home = $homebrew::user_home ? {
+      undef   => "/Users/${homebrew::user}",
+      default => $homebrew::user_home,
+    }
+
+    file { "${_user_home}/.homebrew":
+      ensure => directory,
+      owner  => $homebrew::user,
+      group  => $homebrew::group,
+      mode   => '0755',
+    }
+
+    file { "${_user_home}/.homebrew/brew.env":
+      ensure  => file,
+      owner   => $homebrew::user,
+      group   => $homebrew::group,
+      mode    => '0644',
+      content => "${_environment_lines.join("\n")}\n",
+      require => File["${_user_home}/.homebrew"],
     }
   }
 }

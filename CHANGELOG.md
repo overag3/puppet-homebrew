@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 3.1.2 (2026-07-20)
+- feature: `homebrew_environment` (and `github_token`) now also write `$HOME/.homebrew/brew.env`, the file Homebrew (>= 4.1) natively reads on startup — the mechanism actually honored by `brew` invocations, unlike `/etc/environment` which macOS doesn't read automatically. New optional `user_home` parameter overrides the assumed `/Users/<user>` home directory for non-standard accounts
+- internal: environment-variable-to-line formatting is now computed once and shared between `/etc/environment` and `brew.env` to avoid the two files drifting out of sync
+
 ## 3.1.1 (2026-07-08)
 - fix: the `homebrew` package provider now falls back to a cask lookup when a formula is not found, so installed casks are reported accurately
 - internal: `run_brew` accepts a `failonfail` parameter so expected non-zero exit codes are treated as normal outcomes, plus improved debug logging for package installation status
